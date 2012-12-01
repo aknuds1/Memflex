@@ -195,6 +195,10 @@
     <Compile Include="Models\UserStore.cs" />
     <Compile Include="Models\AccountModels.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Content Include="App_Data\LogMeIn.Models.MovieDb.mdf" />
+    <Content Include="App_Data\LogMeIn.Models.MovieDb_log.ldf">
+      <DependentUpon>LogMeIn.Models.MovieDb.mdf</DependentUpon>
+    </Content>
     <Content Include="Views\Home\Details.cshtml" />
     <Content Include="Views\Home\Create.cshtml" />
     <Content Include="Views\Home\Edit.cshtml" />
@@ -312,9 +316,7 @@
     <Content Include="Views\Shared\_Layout.cshtml" />
     <Content Include="Views\Web.config" />
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="App_Data\" />
-  </ItemGroup>
+  <ItemGroup />
   <ItemGroup>
     <Content Include="packages.config" />
   </ItemGroup>
