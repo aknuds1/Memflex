@@ -19,7 +19,7 @@ namespace FlexProviders.EF
 
         public void CreateRole(string roleName)
         {
-            var role = new TRole {Name = roleName};
+            var role = new TRole { Name = roleName };
             _context.Set<TRole>().Add(role);
             _context.SaveChanges();
         }
@@ -27,7 +27,7 @@ namespace FlexProviders.EF
         public string[] GetRolesForUser(string username)
         {
             return _context.Set<TRole>().Where(role => role.Users.Any(u => u.Username.Equals(username)))
-                           .Select(role => role.Name).ToArray();
+                                       .Select(role => role.Name).ToArray();
         }
 
         public string[] GetUsersInRole(string roleName)
@@ -56,7 +56,7 @@ namespace FlexProviders.EF
 
             foreach (var roleName in roleNames)
             {
-                var role = _context.Set<TRole>().Include(r=>r.Users).SingleOrDefault(r => r.Name == roleName);
+                var role = _context.Set<TRole>().Include(r => r.Users).SingleOrDefault(r => r.Name == roleName);
                 if (role != null)
                 {
                     foreach (var user in users)
@@ -77,7 +77,7 @@ namespace FlexProviders.EF
                 var role = _context.Set<TRole>().SingleOrDefault(r => r.Name == roleName);
                 if (role != null)
                 {
-                    if(role.Users == null)
+                    if (role.Users == null)
                     {
                         role.Users = new Collection<TUser>();
                     }
@@ -97,7 +97,7 @@ namespace FlexProviders.EF
 
         public bool DeleteRole(string roleName)
         {
-            var role = _context.Set<TRole>().Include(r=>r.Users).SingleOrDefault(r => r.Name == roleName);
+            var role = _context.Set<TRole>().Include(r => r.Users).SingleOrDefault(r => r.Name == roleName);
             if (role != null)
             {
                 role.Users.Clear();
