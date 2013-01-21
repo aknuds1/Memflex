@@ -5,6 +5,7 @@ using System.Reflection;
 using FlexProviders.Membership;
 using FlexProviders.Roles;
 using Microsoft.Web.WebPages.OAuth;
+using MongoDB.Bson;
 using MongoDB.Driver;
 using MongoDB.Driver.Builders;
 using MongoDB.Driver.Linq;
@@ -12,83 +13,91 @@ using MongoDB.Driver.Linq;
 namespace FlexProviders.Mongo
 {
     public class FlexMembershipUserStore<TUser, TRole> : IFlexUserStore, IFlexRoleStore
-        where TUser : class, IFlexMembershipUser, new()
-        where TRole : class, IFlexRole<string>, new()
+        where TUser : class, IFlexMembershipUser<ObjectId>, new()
+        where TRole : class, IFlexRole<ObjectId>, new()
     {
-        private readonly MongoCollection<TRole> _roleCollection;
-        private readonly MongoCollection<TUser> _userCollection;
+        protected readonly MongoCollection<TRole> RoleCollection;
+        protected readonly MongoCollection<TUser> UserCollection;
 
         public FlexMembershipUserStore(MongoCollection<TUser> userCollection, MongoCollection<TRole> roleCollection)
         {
-            _userCollection = userCollection;
-            _roleCollection = roleCollection;
+            UserCollection = userCollection;
+            RoleCollection = roleCollection;
         }
 
         public void CreateRole(string roleName)
         {
-            var role = new TRole {Name = roleName};
-            _roleCollection.Save(role);
+            var role = new TRole { Name = roleName };
+            RoleCollection.Save(role);
         }
 
         public string[] GetRolesForUser(string username)
         {
-            return _roleCollection.AsQueryable().Where(r => r.Users.Any(name => name == username))
+            var user = UserCollection.AsQueryable().SingleOrDefault(u => u.Username == username);
+            if (user == null)
+                return new string[] {};
+            // TODO: Use native Mongo query, as this Linq query fails
+            return RoleCollection.AsQueryable().Where(r => r.Users.Any(id => id == user.Id))
                 .Select(r => r.Name).ToArray();
         }
 
         public string[] GetUsersInRole(string roleName)
         {
-            TRole role = _roleCollection.AsQueryable().SingleOrDefault(r => r.Name == roleName);
+            var role = RoleCollection.AsQueryable().SingleOrDefault(r => r.Name == roleName);
             if (role != null)
-                return role.Users.ToArray();
+            {
+                return UserCollection.AsQueryable().Where(u => role.Users.Contains(u.Id)).Select(u => u.Username).ToArray();
+            }
 
-            return new string[0];
+            return new string[] { };
         }
 
         public string[] GetAllRoles()
         {
-            return _roleCollection.AsQueryable().Select(r => r.Name).ToArray();
+            return RoleCollection.AsQueryable().Select(r => r.Name).ToArray();
         }
 
         public void RemoveUsersFromRoles(string[] usernames, string[] roleNames)
         {
+            var users = UserCollection.AsQueryable().Where(u => usernames.Contains(u.Username));
             foreach (string roleName in roleNames)
             {
-                TRole role = _roleCollection.AsQueryable().Single(r => r.Name == roleName);
-                string[] users = role.Users.Where(usernames.Contains).ToArray();
-                foreach (string user in users)
-                    role.Users.Remove(user);
-                _roleCollection.Save(role);
+                var role = RoleCollection.AsQueryable().Single(r => r.Name == roleName);
+                foreach (var uid in role.Users.Where(uid => users.Any(u => u.Id == uid)))
+                    role.Users.Remove(uid);
+                RoleCollection.Save(role);
             }
         }
 
         public void AddUsersToRoles(string[] usernames, string[] roleNames)
         {
+            var uids = UserCollection.AsQueryable().Where(u => usernames.Contains(u.Username)).Select(
+                u => u.Id);
             foreach (string roleName in roleNames)
             {
-                TRole role = _roleCollection.AsQueryable().Single(r => r.Name == roleName);
-                foreach (string username in usernames)
+                TRole role = RoleCollection.AsQueryable().Single(r => r.Name == roleName);
+                foreach (var uid in uids)
                 {
-                    if (!role.Users.Contains(username))
+                    if (!role.Users.Contains(uid))
                     {
-                        role.Users.Add(username);
+                        role.Users.Add(uid);
                     }
                 }
-                _roleCollection.Save(role);
+                RoleCollection.Save(role);
             }
         }
 
         public bool RoleExists(string roleName)
         {
-            return _roleCollection.AsQueryable().Any(r => r.Name == roleName);
+            return RoleCollection.AsQueryable().Any(r => r.Name == roleName);
         }
 
         public bool DeleteRole(string roleName)
         {
-            TRole role = _roleCollection.AsQueryable().SingleOrDefault(r => r.Name == roleName);
+            TRole role = RoleCollection.AsQueryable().SingleOrDefault(r => r.Name == roleName);
             if (role != null)
             {
-                _roleCollection.Remove(Query<TRole>.EQ(r => r.Name, roleName));
+                RoleCollection.Remove(Query<TRole>.EQ(r => r.Name, roleName));
                 return true;
             }
             return false;
@@ -96,42 +105,42 @@ namespace FlexProviders.Mongo
 
         public IFlexMembershipUser CreateOAuthAccount(string provider, string providerUserId, IFlexMembershipUser user)
         {
-            var account = new FlexOAuthAccount {Provider = provider, ProviderUserId = providerUserId};
+            var account = new FlexOAuthAccount { Provider = provider, ProviderUserId = providerUserId };
             if (user.OAuthAccounts == null)
             {
                 user.OAuthAccounts = new Collection<FlexOAuthAccount>();
             }
             user.OAuthAccounts.Add(account);
-            _userCollection.Save(user);
+            UserCollection.Save(user);
 
             return user;
         }
 
         public IFlexMembershipUser GetUserByUsername(string username)
         {
-            return _userCollection.AsQueryable().SingleOrDefault(u => u.Username == username);
+            return UserCollection.AsQueryable().SingleOrDefault(u => u.Username == username);
         }
 
         public IFlexMembershipUser Add(IFlexMembershipUser user)
         {
-            _userCollection.Save(user);
+            UserCollection.Save(user);
             return user;
         }
 
         public IFlexMembershipUser Save(IFlexMembershipUser user)
         {
-            TUser existingUser = _userCollection.AsQueryable().SingleOrDefault(u => u.Username == user.Username);
+            TUser existingUser = UserCollection.AsQueryable().SingleOrDefault(u => u.Username == user.Username);
             foreach (PropertyInfo property in user.GetType().GetProperties().Where(p => p.CanWrite))
                 property.SetValue(existingUser, property.GetValue(user));
 
-            _userCollection.Save(existingUser);
+            UserCollection.Save(existingUser);
             return user;
         }
 
         public bool DeleteOAuthAccount(string provider, string providerUserId)
         {
             TUser user =
-                _userCollection.AsQueryable().SingleOrDefault(
+                UserCollection.AsQueryable().SingleOrDefault(
                     u => u.OAuthAccounts.Any(o => o.ProviderUserId == providerUserId && o.Provider == provider));
 
             if (user != null)
@@ -141,7 +150,7 @@ namespace FlexProviders.Mongo
                     FlexOAuthAccount account =
                         user.OAuthAccounts.Single(o => o.Provider == provider && o.ProviderUserId == providerUserId);
                     user.OAuthAccounts.Remove(account);
-                    _userCollection.Save(user);
+                    UserCollection.Save(user);
                     return true;
                 }
             }
@@ -150,19 +159,19 @@ namespace FlexProviders.Mongo
 
         public IFlexMembershipUser GetUserByPasswordResetToken(string passwordResetToken)
         {
-            return _userCollection.AsQueryable().SingleOrDefault(u => u.PasswordResetToken == passwordResetToken);
+            return UserCollection.AsQueryable().SingleOrDefault(u => u.PasswordResetToken == passwordResetToken);
         }
 
         public IFlexMembershipUser GetUserByOAuthProvider(string provider, string providerUserId)
         {
             return
-                _userCollection.AsQueryable().SingleOrDefault(
+                UserCollection.AsQueryable().SingleOrDefault(
                     u => u.OAuthAccounts.Any(r => r.Provider == provider && r.ProviderUserId == providerUserId));
         }
 
         public IEnumerable<OAuthAccount> GetOAuthAccountsForUser(string username)
         {
-            return _userCollection.AsQueryable()
+            return UserCollection.AsQueryable()
                 .Single(u => u.Username == username)
                 .OAuthAccounts.ToArray()
                 .Select(o => new OAuthAccount(o.Provider, o.ProviderUserId));
@@ -170,19 +179,19 @@ namespace FlexProviders.Mongo
 
         public IFlexMembershipUser CreateOAuthAccount(string provider, string providerUserId, string username)
         {
-            TUser user = _userCollection.AsQueryable().SingleOrDefault(u => u.Username == username);
+            TUser user = UserCollection.AsQueryable().SingleOrDefault(u => u.Username == username);
             if (user == null)
             {
-                user = new TUser {Username = username};
-                _userCollection.Save(user);
+                user = new TUser { Username = username };
+                UserCollection.Save(user);
             }
-            var account = new FlexOAuthAccount {Provider = provider, ProviderUserId = providerUserId};
+            var account = new FlexOAuthAccount { Provider = provider, ProviderUserId = providerUserId };
             if (user.OAuthAccounts == null)
             {
                 user.OAuthAccounts = new Collection<FlexOAuthAccount>();
             }
             user.OAuthAccounts.Add(account);
-            _userCollection.Save(user);
+            UserCollection.Save(user);
 
             return user;
         }

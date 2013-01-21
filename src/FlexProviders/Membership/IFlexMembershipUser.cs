@@ -12,4 +12,9 @@ namespace FlexProviders.Membership
         DateTime PasswordResetTokenExpiration { get; set; }
         ICollection<FlexOAuthAccount> OAuthAccounts { get; set; }       
     }
+
+    public interface IFlexMembershipUser<TId> : IFlexMembershipUser
+    {
+        TId Id { get; set; }
+    }
 }
