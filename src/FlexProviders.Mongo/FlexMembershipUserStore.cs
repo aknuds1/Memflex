@@ -36,9 +36,9 @@ namespace FlexProviders.Mongo
             var user = UserCollection.AsQueryable().SingleOrDefault(u => u.Username == username);
             if (user == null)
                 return new string[] {};
-            // TODO: Use native Mongo query, as this Linq query fails
-            return RoleCollection.AsQueryable().Where(r => r.Users.Any(id => id == user.Id))
+            var names = RoleCollection.Find(new QueryDocument("Users", user.Id))
                 .Select(r => r.Name).ToArray();
+            return names;
         }
 
         public string[] GetUsersInRole(string roleName)

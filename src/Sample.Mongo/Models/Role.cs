@@ -1,9 +1,10 @@
 using System.Collections.Generic;
 using FlexProviders.Roles;
+using MongoDB.Bson;
 
 namespace LogMeIn.Models
 {
-    public class Role : IFlexRole<string>
+    public class Role : IFlexRole<ObjectId>
     {
         /// <summary>
         /// Gets or sets the id.
@@ -27,6 +28,6 @@ namespace LogMeIn.Models
         /// <value>
         /// The users.
         /// </value>
-        public ICollection<string> Users { get; set; }
+        public ICollection<ObjectId> Users { get; set; }
     }
 }
