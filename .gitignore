@@ -40,3 +40,5 @@ log.txt
 .sdf
 packages/
 TestResults/
+*.sw*
+*~
