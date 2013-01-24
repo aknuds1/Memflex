@@ -5,9 +5,9 @@ using MongoDB.Bson;
 
 namespace LogMeIn.Models
 {
-    public class User : IFlexMembershipUser<ObjectId>
+    public class User : IFlexMembershipUser<string>
     {
-        public ObjectId Id { get; set; }
+        public string Id { get; set; }
         public string Username { get; set; }
         public string Password { get; set; }
         public string Salt { get; set; }

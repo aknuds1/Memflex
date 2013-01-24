@@ -4,7 +4,7 @@ using MongoDB.Bson;
 
 namespace LogMeIn.Models
 {
-    public class Role : IFlexRole<ObjectId>
+    public class Role : IFlexRole<string>
     {
         /// <summary>
         /// Gets or sets the id.
@@ -28,6 +28,6 @@ namespace LogMeIn.Models
         /// <value>
         /// The users.
         /// </value>
-        public ICollection<ObjectId> Users { get; set; }
+        public ICollection<string> Users { get; set; }
     }
 }

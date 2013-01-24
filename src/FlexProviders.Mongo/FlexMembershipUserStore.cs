@@ -9,15 +9,17 @@ using MongoDB.Bson;
 using MongoDB.Driver;
 using MongoDB.Driver.Builders;
 using MongoDB.Driver.Linq;
+using NLog;
 
 namespace FlexProviders.Mongo
 {
     public class FlexMembershipUserStore<TUser, TRole> : IFlexUserStore, IFlexRoleStore
-        where TUser : class, IFlexMembershipUser<ObjectId>, new()
-        where TRole : class, IFlexRole<ObjectId>, new()
+        where TUser : class, IFlexMembershipUser<string>, new()
+        where TRole : class, IFlexRole<string>, new()
     {
         protected readonly MongoCollection<TRole> RoleCollection;
         protected readonly MongoCollection<TUser> UserCollection;
+        private static Logger _logger = LogManager.GetCurrentClassLogger();
 
         public FlexMembershipUserStore(MongoCollection<TUser> userCollection, MongoCollection<TRole> roleCollection)
         {
@@ -35,9 +37,20 @@ namespace FlexProviders.Mongo
         {
             var user = UserCollection.AsQueryable().SingleOrDefault(u => u.Username == username);
             if (user == null)
+            {
+                _logger.Debug("Couldn't find user '{0}'", username);
                 return new string[] {};
-            var names = RoleCollection.Find(new QueryDocument("Users", user.Id))
+            }
+            var names = RoleCollection.Find(new QueryDocument("Users", ObjectId.Parse(user.Id)))
                 .Select(r => r.Name).ToArray();
+            if (names.Any())
+            {
+                _logger.Debug("Got roles {0} for user '{1}'", string.Join(", ", names), username);
+            }
+            else
+            {
+                _logger.Debug("User '{0}' has no roles", username);
+            }
             return names;
         }
 
