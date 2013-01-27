@@ -12,7 +12,7 @@
     <description>$description$</description>
     <releaseNotes></releaseNotes>
     <copyright>Copyright 2013</copyright>
-    <tags>asp.net membership mongodb</tags>
+    <tags>asp.net membership ravendb</tags>
     <dependencies>
       <dependency id="FlexProviders" version="1.0"/>
     </dependencies>

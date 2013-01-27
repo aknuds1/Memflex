@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -19,18 +20,21 @@ namespace FlexProviders.Mongo
     {
         protected readonly MongoCollection<TRole> RoleCollection;
         protected readonly MongoCollection<TUser> UserCollection;
-        private static Logger _logger = LogManager.GetCurrentClassLogger();
+        private readonly Logger _logger;
 
         public FlexMembershipUserStore(MongoCollection<TUser> userCollection, MongoCollection<TRole> roleCollection)
         {
             UserCollection = userCollection;
             RoleCollection = roleCollection;
+            _logger = LogManager.GetCurrentClassLogger();
         }
 
         public void CreateRole(string roleName)
         {
+            if (RoleCollection.Find(Query.EQ("Name", roleName)).Any())
+                throw new ArgumentException(string.Format("Role '{0}' already exists", roleName));
             var role = new TRole { Name = roleName };
-            RoleCollection.Save(role);
+            RoleCollection.Insert(role);
         }
 
         public string[] GetRolesForUser(string username)
@@ -39,7 +43,7 @@ namespace FlexProviders.Mongo
             if (user == null)
             {
                 _logger.Debug("Couldn't find user '{0}'", username);
-                return new string[] {};
+                return new string[] { };
             }
             var names = RoleCollection.Find(new QueryDocument("Users", ObjectId.Parse(user.Id)))
                 .Select(r => r.Name).ToArray();
@@ -86,7 +90,7 @@ namespace FlexProviders.Mongo
         {
             var uids = UserCollection.AsQueryable().Where(u => usernames.Contains(u.Username)).Select(
                 u => u.Id);
-            foreach (string roleName in roleNames)
+            foreach (var roleName in roleNames)
             {
                 TRole role = RoleCollection.AsQueryable().Single(r => r.Name == roleName);
                 foreach (var uid in uids)
