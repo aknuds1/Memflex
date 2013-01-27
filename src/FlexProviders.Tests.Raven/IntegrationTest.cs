@@ -27,7 +27,6 @@ namespace FlexProviders.Tests.Integration.Raven
             }
         }
 
-
         public IntegrationTest()
         {
             DocumentStore = new EmbeddableDocumentStore()
@@ -36,8 +35,7 @@ namespace FlexProviders.Tests.Integration.Raven
             };
             DocumentStore.RegisterListener(new NoStaleQueries());
             DocumentStore.Initialize();
-            Session = DocumentStore.OpenSession();
-            UserStore = new FlexMembershipUserStore<User, Role>(Session);
+            UserStore = new FlexMembershipUserStore<User, Role>(DocumentStore);
             Environment = new FakeApplicationEnvironment();
             RoleProvider = new FlexRoleProvider(UserStore);
             MembershipProvider = new FlexMembershipProvider(UserStore, Environment);
