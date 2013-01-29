@@ -4,6 +4,7 @@ using FlexProviders.Membership;
 using FlexProviders.Raven;
 using FlexProviders.Roles;
 using Raven.Client;
+using Raven.Client.Document;
 using Raven.Client.Embedded;
 using Raven.Client.Listeners;
 
@@ -16,7 +17,6 @@ namespace FlexProviders.Tests.Integration.Raven
         protected readonly FakeApplicationEnvironment Environment;
         protected FlexMembershipUserStore<User, Role> UserStore;
         protected EmbeddableDocumentStore DocumentStore;
-        protected IDocumentSession Session;
         public IDocumentSession Verifier
         {
             get 
@@ -33,7 +33,7 @@ namespace FlexProviders.Tests.Integration.Raven
             {
                 RunInMemory = true 
             };
-            DocumentStore.RegisterListener(new NoStaleQueries());
+            DocumentStore.Conventions.DefaultQueryingConsistency = ConsistencyOptions.QueryYourWrites;
             DocumentStore.Initialize();
             UserStore = new FlexMembershipUserStore<User, Role>(DocumentStore);
             Environment = new FakeApplicationEnvironment();
@@ -43,19 +43,10 @@ namespace FlexProviders.Tests.Integration.Raven
 
         public void Dispose()
         {
-            Session.Dispose();
             DocumentStore.Dispose();
             foreach (var disposable in _resources)
             {
                 disposable.Dispose();
-            }
-        }
-
-        class NoStaleQueries : IDocumentQueryListener
-        {
-            public void BeforeQueryExecuted(IDocumentQueryCustomization queryCustomization)
-            {
-                queryCustomization.WaitForNonStaleResults();
             }
         }
 

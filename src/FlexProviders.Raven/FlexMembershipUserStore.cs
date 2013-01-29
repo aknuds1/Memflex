@@ -50,7 +50,13 @@ namespace FlexProviders.Raven
                 if (existingUser == null)
                     throw new UserNotFoundException(user.Username);
 
-                session.Store(user);
+                foreach (var prop in existingUser.GetType().GetProperties())
+                {
+                    if (prop.CanWrite)
+                    {
+                        prop.SetValue(existingUser, prop.GetValue(user));
+                    }
+                }
                 session.SaveChanges();
             }
             return user;

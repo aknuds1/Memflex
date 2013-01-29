@@ -8,8 +8,8 @@ namespace FlexProviders.Tests.Integration.Raven.Membership
         [Fact]
         public void Can_Change_Password()
         {
-            var username = "sallen";
-            var password = "12345678";
+            const string username = "sallen";
+            const string password = "12345678";
             var user = new User { Username = username, Password = password };
             MembershipProvider.CreateAccount(user);
 
